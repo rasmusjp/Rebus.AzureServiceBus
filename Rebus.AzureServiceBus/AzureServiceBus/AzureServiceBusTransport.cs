@@ -152,6 +152,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
         topic = _nameFormatter.FormatTopicName(topic);
 
+        if (_connectionStringParser.UseDevelopmentEmulator)
+        {
+            _log.Warn("Transport is using an Emulator, not registering {scbscriptionName} subscription for topic {topicName}", _subscriptionName, topic);
+            return;
+        }
+
         _log.Debug("Registering subscription for topic {topicName}", topic);
 
         await _subscriptionExceptionIgnorant.Execute(async () =>
@@ -185,6 +191,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         VerifyIsOwnInputQueueAddress(subscriberAddress);
 
         topic = _nameFormatter.FormatTopicName(topic);
+
+        if (_connectionStringParser.UseDevelopmentEmulator)
+        {
+            _log.Warn("Transport is using an Emulator, not unregistering {scbscriptionName} subscription for topic {topicName}", _subscriptionName, topic);
+            return;
+        }
 
         _log.Debug("Unregistering subscription for topic {topicName}", topic);
 
@@ -324,6 +336,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
             return;
         }
 
+        if (_connectionStringParser.UseDevelopmentEmulator)
+        {
+            _log.Warn("Transport is using an Emulator, skipping existence check and potential creation for {queueName}", normalizedAddress);
+            return;
+        }
+
         AsyncHelpers.RunSync(async () =>
         {
             if (await _managementClient.QueueExistsAsync(normalizedAddress, _cancellationToken).ConfigureAwait(false)) return;
@@ -352,6 +370,12 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
         if (DoNotCheckQueueConfigurationEnabled)
         {
             _log.Info("Transport configured to not check queue configuration - skipping existence check for {queueName}", address);
+            return;
+        }
+
+        if (_connectionStringParser.UseDevelopmentEmulator)
+        {
+            _log.Warn("Transport is using an Emulator - skipping existence check for {queueName}", address);
             return;
         }
 
@@ -898,7 +922,10 @@ public class AzureServiceBusTransport : ITransport, IInitializable, IDisposable,
 
     async Task<ServiceBusSender> GetTopicClient(string topic) => await _topicClients.GetOrAdd(topic, _ => new(async () =>
     {
-        await EnsureTopicExists(topic);
+        if (!_connectionStringParser.UseDevelopmentEmulator)
+        {
+            await EnsureTopicExists(topic);
+        }
 
         var topicClient = _client.CreateSender(topic);
 

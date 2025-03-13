@@ -45,6 +45,7 @@ class ConnectionStringParser
             .ToDictionary(a => a.key, a => a.value);
     }
 
+    public bool UseDevelopmentEmulator => _parts.GetValue("UseDevelopmentEmulator") == "true";
     public string Endpoint => _parts.GetValue("Endpoint").TrimEnd('/');
     public string SharedAccessKeyName => _parts.GetValue("SharedAccessKeyName");
     public string SharedAccessKey => _parts.GetValue("SharedAccessKey");
